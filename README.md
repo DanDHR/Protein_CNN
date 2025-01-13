@@ -1,5 +1,7 @@
 _This code implements my own CNN model that predicts the subcellular location of a protein based on it's sequence from custom made dataset collected from UniProtKB._<br /> 
 
+
+
 # To run the code: <br /> 
 1. Clone repo from github. <br />
 2. Unzip `data.zip`. Note that the a copy of the input data for the model, generarted from my data cleaning/generation script `Data_filter.Rmd`, has already been saved to `data/x_data.csv` and `data/y_data.csv` for input x and target y respectively. `data/x_data.csv` currently contains 5998 protein sequence samples that have been hot encoded and padded to the same length, and `data/y_data.csv` currently contains 5998 samples with 227 classes.
@@ -8,6 +10,8 @@ _This code implements my own CNN model that predicts the subcellular location of
         `source test_env/bin/activate` - Activate the new environment<br />
        `pip install -r requirements.txt` - Install the all dependences<br />
 4. Run either `cnn_no_regulizer.ipynb` or `cnn_regulizer.ipynb` to choose the version with or without L2 regularization (see explaination below). <br /> 
+
+
 
 # Details on data collection on proteins from UniProtKB
 The experiments used protein sequences taken from UniProtKB by following the steps bellow:<br /> 
@@ -23,6 +27,7 @@ https://www.uniprot.org/help/subcellular_location
 And install the `subcell.txt` from the "Related documents" category.
 
 
+
 # Details on data cleaning for both protein sequence and protein labels/locations in R
 The next step would then be cleaning the data. The `Data_filter.Rmd` code cleanes the data in the following order:<br /> 
 1. Loading protein sequences and cleaning rows and columns containing N/A.<br /> 
@@ -32,6 +37,28 @@ The next step would then be cleaning the data. The `Data_filter.Rmd` code cleane
 6. Remove any missed empty columns and rows.<br />
 7. Prepare the protein sequences by applying one-hot encoding and then pad the sequences to match lengths.<br />
 8. Prepare the data into matrices and export them as `.csv` files inside a `data/` folder.<br />
+
+
+
+# CNN predictor: <br /> 
+A convolutional neural network was chosen because of its effieceincy of recognising spatial patterns within the protein sequence. This is crucial since the only information I will be training it is the one-hot encoded table of protein sequences. While other machine learning methods have been considered, e.g RNNs, MLPs etc. CNN was chosen as a compromise between my computer's computational capacity and the data complexity.<br />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
