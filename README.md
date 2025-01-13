@@ -41,18 +41,14 @@ The next step would then be cleaning the data. The `Data_filter.Rmd` code cleane
 
 
 # CNN predictor: <br /> 
+
 A convolutional neural network was chosen because of its effieceincy of recognising spatial patterns within the protein sequence. This is crucial since the only information I will be training it is the one-hot encoded table of protein sequences. While other machine learning methods have been considered, e.g RNNs, MLPs etc. CNN was chosen as a compromise between my computer's computational capacity and the data complexity.<br />
+
 In terms of performance and generalisation, the model has been tested at various depths for performance in terms of validation accuracy and the current depth of network was chosen to optimise performance while ensuring that it can be ran on a standard PC within reasonable amount of time, while being able to tackle the complexity commonly associated with biominformatic datasets. Dropout was added as earlier runs of the code where validation was showing strong signs of overfitting through the training and validation losses.<br />
-Later iterations had implemented confusion matrices which 
-While the accuracy was high, the confusion matrix has shown that the true positive predictions were greatly affected by class imbalance (for each protein it is much more common for label to be 0, than 1 in the dataset), causing the model to severely overfit, as consistently predicting 0 leads to a higher accuracy, despite consistently misclassifying most examples with the true label of 1. 
 
+As this is a multi-class classification problem, for any positive class, we can label the said class as 1 (i.e. the correct location of the protein within the cell), and every other class as 0 (absense of the protein within that location). If we concentrate on the model's ability to gain true positives and true negatives (through the confusion matrix), we can see the the model is rarely able to truly predict the correct location of the protein for both classes. While the accuracy was high, the confusion matrix has shown that the true positive predictions were greatly affected by class imbalance (for each protein it is much more common for label to be 0, than 1 in the dataset), causing the model to severely overfit, as consistently predicting 0 leads to a higher accuracy, despite consistently misclassifying most examples with the true label of 1. <br />
 
-
-As this is a multi-class classification problem, for any positive class, we can label the said class as 1 (i.e. the correct location of the protein within the cell), and every other class as 0 (absense of the protein within that location). If we concentrate on the model's ability to gain true positives and true negatives (through the confusion matrix), we can see the the model is rarely able to truly predict the correct location of the protein for both classes, even if the accuracy of the model remains high. 
-
-
-
-This lead to the creation of the second version - identical to the first with the exception of adding L2 regularization in attempt to tackle model overfitting
+This lead to the creation of the second version - identical to the first with the exception of adding L2 regularization in attempt to tackle model overfitting, and in particular, class imbalance, at the expense of overall training and validation accuracy. This is not a valid solution however, as it greatly increased the number of false positive predictions. Nevertheless, the implementation was kept here as it produced a notable, albeit small, improvement in the correctness of predictions in the minority class. Should the scope of the project be broader, more time would have been spent on investigating methods tackling such class imbalance.<br />
 
 
 
