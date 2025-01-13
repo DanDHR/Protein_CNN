@@ -9,7 +9,8 @@ _This code implements my own CNN model that predicts the subcellular location of
         `python -m venv test_env` - Create a new python environment<br />
         `source test_env/bin/activate` - Activate the new environment<br />
        `pip install -r requirements.txt` - Install the all dependences<br />
-4. Run either `cnn_no_regulizer.ipynb` or `cnn_regulizer.ipynb` to choose the version with or without L2 regularization (see explaination below). <br /> 
+4. Run either `cnn_no_regulizer.ipynb` or `cnn_regulizer.ipynb` to choose the version with or without L2 regularization (see explaination below). <br />
+5. Note that the plots from the experiments are located in folders `final_plots_no_regularizer` and `final_plots_regularizer`. <br />
 
 
 
