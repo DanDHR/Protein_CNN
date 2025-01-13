@@ -3,7 +3,7 @@ _This code implements my own CNN model that predicts the subcellular location of
 
 
 # To run the code: <br /> 
-1. Clone repo from github. <br />
+1. Clone repo from github: `git clone https://github.com/DanDHR/Protein_CNN.git` <br />
 2. Unzip `data.zip`. Note that the a copy of the input data for the model, generarted from my data cleaning/generation script `Data_filter.Rmd`, has already been saved to `data/x_data.csv` and `data/y_data.csv` for input x and target y respectively. `data/x_data.csv` currently contains 5998 protein sequence samples that have been hot encoded and padded to the same length, and `data/y_data.csv` currently contains 5998 samples with 227 classes.
 3. To ensure no dependence clashes, use: <br />
         `python -m venv test_env` - Create a new python environment<br />
