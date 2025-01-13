@@ -1,0 +1,216 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-01-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# check if we need to install anything
+for (rp in c("readxl", "dplyr","stringr","msa", "ISLR2", "glmnet", "torch", "luz", "torchvision", "torchdatasets", "zeallot")) {
+  if(!require(rp, character.only=TRUE)) {
+    install.packages(rp)
+  }
+}
+```
+
+
+
+
+```{r}
+library("readxl")
+library(dplyr)
+
+protein.fname <- 'data/proteins.xlsx'
+df_proteins <- readxl::read_excel(protein.fname)
+
+
+df_proteins_filtered <- df_proteins %>%
+  filter(complete.cases(.), Organism == "Homo sapiens (Human)")
+
+df_proteins_filtered
+
+length(df_proteins$Organism)
+length(df_proteins_filtered$Organism)
+```
+
+
+
+
+```{r}
+library(stringr)
+
+text_data <- readLines("data/subcell.txt")
+
+locations <- text_data[grep("^ID", text_data)]
+unique_locations <- unique(trimws(str_remove(str_remove(locations, "^ID\\s*"), "\\.$")))
+df_unique_locations <- data.frame(`Is a` = unique_locations)
+
+print(df_unique_locations)
+```
+
+
+
+
+
+```{r}
+library(dplyr)
+
+# Extract valid locations as a vector
+valid_locations <- tolower(trimws(df_unique_locations$`Is.a`))
+
+# Function to clean and filter subcellular locations, and generate a vector for neural network
+clean_and_filter_locations <- function(subcellular_text, valid_locations) {
+  # Step 1: Clean the text
+  cleaned_text <- gsub("SUBCELLULAR LOCATION: ", "", subcellular_text)  
+  cleaned_text <- gsub("\\{[^\\}]*\\}", "", cleaned_text)          
+  cleaned_text <- gsub("Note=.*", "", cleaned_text) 
+  
+  # Step 2: Normalize to lowercase and remove extra spaces
+  cleaned_text <- tolower(trimws(cleaned_text))
+  
+  # Step 3: Split the cleaned text by both periods and commas
+  location_candidates <- unlist(strsplit(cleaned_text, "[,.;]+"))
+  location_candidates <- trimws(location_candidates)
+  
+  # Step 4: Filter out empty strings after split
+  location_candidates <- location_candidates[location_candidates != ""]
+  
+  # Step 5: Extract unique location tokens
+  unique_tokens <- unique(location_candidates)
+
+  # Step 6: Match the unique tokens against the valid locations
+  matches <- unique_tokens[unique_tokens %in% valid_locations]
+  return(matches)
+}
+
+generate_location_matrix <- function(df_proteins, valid_locations) {
+  # Initialize a matrix with zeros
+  location_matrix <- matrix(0, nrow = nrow(df_proteins), ncol = length(valid_locations))
+  colnames(location_matrix) <- valid_locations  
+  
+  for (i in 1:nrow(df_proteins)) {
+    locations <- clean_and_filter_locations(df_proteins[i, "Subcellular location [CC]"], valid_locations)
+    for (loc in locations) {
+      location_matrix[i, loc] <- 1  # Mark location with 1
+    }
+  }
+
+  # Convert the location matrix to a data frame
+  location_matrix_df <- as.data.frame(location_matrix)
+  
+  # Add 'Entry' and 'Sequence' columns to the data frame
+  location_matrix_df <- cbind(
+    Entry = df_proteins$Entry,
+    Sequence = df_proteins$Sequence,
+    location_matrix_df
+  )
+  
+  # Remove columns where all values are 0 (excluding 'Entry' and 'Sequence')
+  location_matrix_df <- location_matrix_df[, c(1, 2, which(colSums(location_matrix_df[, -c(1, 2)]) > 0) + 2)]
+  
+  return(location_matrix_df)
+}
+
+# Generate the final location matrix
+location_matrix_df <- generate_location_matrix(df_proteins_filtered, valid_locations)
+
+# View the result
+head(location_matrix_df)
+
+
+```
+
+
+
+```{r}
+sequence_lengths <- nchar(location_matrix_df$Sequence)
+
+percentile_75 <- quantile(sequence_lengths, 0.75)
+cat("75th Percentile Length:", percentile_75, "\n")
+
+long_sequences <- sequence_lengths[sequence_lengths > percentile_75]
+cat("Number of sequences longer than 75th percentile:", length(long_sequences), "\n")
+
+filtered_sequences <- location_matrix_df$Sequence[nchar(location_matrix_df$Sequence) <= percentile_75]
+cat("Number of sequences after filtering:", length(filtered_sequences), "\n")
+
+location_matrix_df_filtered <- location_matrix_df[nchar(location_matrix_df$Sequence) <= percentile_75, ]
+sequence_lengths <- nchar(location_matrix_df_filtered$Sequence)
+
+head(location_matrix_df_filtered)
+```
+
+```{r}
+location_matrix_df_filtered <- location_matrix_df_filtered[
+  rowSums(location_matrix_df_filtered[, -c(1, 2)]) >= 1, 
+  c(TRUE, TRUE, colSums(location_matrix_df_filtered[, -c(1, 2)]) >= 1)]
+```
+
+
+
+```{r}
+# Define the maximum length for padding (75th percentile length used earlier)
+max_length <- percentile_75  # Use the previously calculated 75th percentile variable
+
+# Function to one-hot encode a single sequence, pad it to max_length, and flatten the matrix
+one_hot_encode_and_pad_flatten <- function(sequence, max_length) {
+  # Define the amino acid groups (alphabet)
+  amino_acids <- c("A", "R", "N", "D", "C", "E", "Q", "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V")
+  
+  # Create a mapping from amino acid to index (for 1-hot encoding)
+  aa_to_index <- setNames(1:length(amino_acids), amino_acids)
+
+  # One-hot encode the sequence
+  one_hot <- lapply(strsplit(sequence, "")[[1]], function(aa) {
+    # Initialize a vector of zeros with length 20 (one for each amino acid)
+    encoded_aa <- rep(0, length(amino_acids))
+    # Set the corresponding index to 1
+    encoded_aa[aa_to_index[aa]] <- 1
+    return(encoded_aa)
+  })
+  
+  # Convert the list of vectors into a matrix
+  one_hot_matrix <- do.call(rbind, one_hot)
+
+  # Pad the matrix to the right with zeros if necessary
+  pad_size <- max_length - nrow(one_hot_matrix)
+  if (pad_size > 0) {
+    padding <- matrix(0, nrow = pad_size, ncol = length(amino_acids))
+    one_hot_matrix <- rbind(one_hot_matrix, padding)
+  }
+
+  # Trim the matrix if it exceeds max_length (just in case)
+  one_hot_matrix <- one_hot_matrix[1:max_length, ]
+
+  # Flatten the one-hot matrix into a single vector (concatenate all rows)
+  flattened_sequence <- as.vector(t(one_hot_matrix))  # Transpose and flatten
+
+  return(flattened_sequence)
+}
+# Apply the function to all sequences in location_matrix_df_filtered
+x <- do.call(rbind, lapply(location_matrix_df_filtered$Sequence, one_hot_encode_and_pad_flatten, max_length = max_length))
+
+dim(x)  # Should be (num_sequences, max_length * 20)
+```
+
+
+
+```{r}
+location_data <- location_matrix_df_filtered[, 3:ncol(location_matrix_df_filtered)]
+
+location_matrix <- as.matrix(location_data)
+y <- apply(location_matrix, c(1, 2), as.integer)
+
+dim(y)
+```
+   
+   
+```{r}
+# Save x and y as a CSV file
+write.csv(x, file = "data/x_data.csv", row.names = FALSE)
+write.csv(y, file = "data/y_data.csv", row.names = FALSE)
+```
+   
+   
+   
